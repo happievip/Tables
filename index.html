@@ -1,0 +1,1757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Photo Inspection & Survey Report Generator</title>
+  <!-- jsPDF Direct Vector & Image Engine (Pure API, no html2canvas required) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :root {
+      --primary: #0f172a;
+      --primary-accent: #2563eb;
+      --border-color: #cbd5e1;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: #f1f5f9;
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* TOP HEADER - Non-overlapping Mobile First */
+    .app-header {
+      background: #ffffff;
+      border-bottom: 1px solid #e2e8f0;
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      padding-top: env(safe-area-inset-top, 0px);
+    }
+    .header-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 10px 14px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 180px;
+    }
+    .brand-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      background: #2563eb;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .brand-text-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+    .save-status {
+      font-size: 11px;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .save-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #10b981;
+      display: inline-block;
+      transition: background 0.2s;
+    }
+
+    .btn-group {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 7px 11px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .btn:active {
+      transform: scale(0.97);
+    }
+    .btn-primary {
+      background: #2563eb;
+      color: #ffffff;
+      box-shadow: 0 1px 3px rgba(37,99,235,0.25);
+    }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-secondary {
+      background: #f1f5f9;
+      color: #334155;
+      border-color: #cbd5e1;
+    }
+    .btn-secondary:hover { background: #e2e8f0; }
+    .btn-danger {
+      background: #fef2f2;
+      color: #dc2626;
+      border-color: #fecaca;
+    }
+    .btn-danger:hover { background: #fee2e2; }
+
+    /* WORKSPACE */
+    .main-workspace {
+      max-width: 1100px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 12px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .toolbar-panel {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    }
+    .toolbar-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .field-inline {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1 1 200px;
+      min-width: 0;
+    }
+    .field-tag {
+      font-size: 11px;
+      font-weight: 700;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+    .text-input {
+      width: 100%;
+      min-width: 0;
+      padding: 7px 10px;
+      font-size: 13px;
+      font-weight: 600;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #f8fafc;
+      color: #0f172a;
+      outline: none;
+    }
+    .text-input:focus {
+      border-color: #2563eb;
+      background: #ffffff;
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+    }
+
+    .density-switcher {
+      display: inline-flex;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 2px;
+      gap: 2px;
+      flex-shrink: 0;
+    }
+    .btn-density {
+      padding: 4px 9px;
+      font-size: 12px;
+      font-weight: 700;
+      border: none;
+      background: transparent;
+      color: #64748b;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .btn-density.active {
+      background: #ffffff;
+      color: #2563eb;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+    }
+
+    .meta-summary {
+      font-size: 12px;
+      color: #64748b;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .form-check {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      color: #334155;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .form-check input {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+
+    /* AREA CARDS & COLLAPSIBLE ACCORDION */
+    .area-card {
+      background: var(--card-bg);
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      transition: all 0.2s ease;
+      margin-bottom: 12px;
+    }
+    .area-header {
+      background: #ffffff;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      cursor: pointer;
+      user-select: none;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .area-header:hover {
+      background: #f8fafc;
+    }
+    .area-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      flex: 1;
+    }
+    .accordion-indicator {
+      font-size: 10px;
+      color: #64748b;
+      transition: transform 0.2s ease;
+      display: inline-block;
+    }
+    .area-card.collapsed .accordion-indicator {
+      transform: rotate(-90deg);
+    }
+    .area-card.collapsed .area-body {
+      display: none !important;
+    }
+    .area-card.collapsed .area-header {
+      border-bottom: none;
+    }
+    .area-title-text {
+      font-size: 14px;
+      font-weight: 700;
+      color: #0f172a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .photo-count-badge {
+      background: #eff6ff;
+      color: #2563eb;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 12px;
+      white-space: nowrap;
+    }
+    .area-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .area-body {
+      padding: 12px;
+      background: #fcfdfe;
+    }
+
+    /* WORKSPACE PHOTO GRID & SIZES */
+    .workspace-grid {
+      display: grid;
+      gap: 12px;
+    }
+    .grid-view-1 { grid-template-columns: 1fr; }
+    .grid-view-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-view-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-view-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+    @media (max-width: 640px) {
+      .grid-view-3, .grid-view-4 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    .photo-item {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    }
+    .photo-item-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .photo-num-pill {
+      background: #0f172a;
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 6px;
+      line-height: 1.2;
+    }
+    .photo-del-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 16px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 2px 5px;
+      border-radius: 4px;
+    }
+    .photo-del-btn:hover {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+    .photo-preview-wrap {
+      width: 100%;
+      height: 150px;
+      background: #f1f5f9;
+      border-radius: 6px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .grid-view-1 .photo-preview-wrap { height: 260px; }
+    .grid-view-2 .photo-preview-wrap { height: 180px; }
+    .grid-view-3 .photo-preview-wrap { height: 140px; }
+    .grid-view-4 .photo-preview-wrap { height: 120px; }
+
+    .photo-preview-wrap img {
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      display: block;
+    }
+    .remarks-input {
+      width: 100%;
+      min-height: 38px;
+      max-height: 70px;
+      resize: vertical;
+      font-size: 11px;
+      padding: 6px 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-family: inherit;
+      color: #1e293b;
+      outline: none;
+    }
+    .remarks-input:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 2px rgba(37,99,235,0.1);
+    }
+
+    /* EMPTY STATE */
+    .empty-state {
+      background: #ffffff;
+      border: 2px dashed #cbd5e1;
+      border-radius: 14px;
+      padding: 36px 16px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      margin-top: 10px;
+    }
+    .empty-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: #eff6ff;
+      color: #2563eb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* MODAL OVERLAY & POPUPS */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(2px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 14px;
+    }
+    .modal-backdrop.open {
+      display: flex !important;
+    }
+    .modal-dialog {
+      background: #ffffff;
+      width: 100%;
+      max-width: 440px;
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #f1f5f9;
+      padding-bottom: 10px;
+    }
+    .modal-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 22px;
+      line-height: 1;
+      color: #94a3b8;
+      cursor: pointer;
+    }
+    .modal-close:hover { color: #0f172a; }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    /* LIGHTBOX */
+    #modal-lightbox {
+      background: rgba(0, 0, 0, 0.95);
+      z-index: 200;
+      padding: 12px;
+    }
+    .lightbox-wrap {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      max-width: 95vw;
+      max-height: 95vh;
+    }
+    .lightbox-img {
+      max-width: 90vw;
+      max-height: 82vh;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      border-radius: 6px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+    .lightbox-close {
+      position: absolute;
+      top: -38px;
+      right: 0;
+      color: #ffffff;
+      background: rgba(255,255,255,0.2);
+      border: none;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+    .lightbox-caption {
+      color: #f1f5f9;
+      font-size: 13px;
+      font-weight: 600;
+      margin-top: 10px;
+      text-align: center;
+    }
+
+    /* PROGRESS SPINNER */
+    #pdf-progress-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.75);
+      z-index: 300;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+      color: #ffffff;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(255,255,255,0.2);
+      border-top-color: #ffffff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ================= TOP HEADER ================= -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand-wrap">
+        <div class="brand-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+            <circle cx="12" cy="13" r="4"></circle>
+          </svg>
+        </div>
+        <div>
+          <div class="brand-text-title">Photo Report Generator</div>
+          <div class="save-status">
+            <span id="save-dot" class="save-dot"></span>
+            <span id="save-status-text">Saved to Phone Memory</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-group">
+        <button id="btn-open-settings" type="button" class="btn btn-secondary">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          <span>Settings & Theme</span>
+        </button>
+
+        <button id="btn-export-pdf" type="button" class="btn btn-primary">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Download PDF</span>
+        </button>
+
+        <button id="btn-reset-app" type="button" class="btn btn-danger" title="Reset all data">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 6h18"></path>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+          <span>Reset</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= WORKSPACE ================= -->
+  <main class="main-workspace">
+
+    <!-- Toolbar panel -->
+    <div class="toolbar-panel">
+      <div class="toolbar-row">
+        <div class="field-inline">
+          <span class="field-tag">PDF File Name:</span>
+          <input type="text" id="input-pdf-filename" class="text-input" placeholder="e.g. Site_Inspection_Report" value="Site_Inspection_Report">
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="field-tag">View:</span>
+          <div class="density-switcher">
+            <button type="button" class="btn-density" data-density="1">1</button>
+            <button type="button" class="btn-density" data-density="2">2</button>
+            <button type="button" class="btn-density" data-density="3">3</button>
+            <button type="button" class="btn-density active" data-density="4">4</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="toolbar-row" style="border-top: 1px solid #f1f5f9; padding-top: 8px;">
+        <div class="meta-summary">
+          <strong id="summary-title" style="color: #0f172a;">Site Inspection & Photo Report</strong>
+          <span>•</span>
+          <span id="summary-paper">A4 portrait</span>
+          <span>•</span>
+          <span id="summary-grid">2 × 2 Grid (4 pics/page)</span>
+        </div>
+
+        <div style="display: flex; gap: 6px;">
+          <button id="btn-collapse-all" type="button" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;">Collapse All</button>
+          <button id="btn-expand-all" type="button" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;">Expand All</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Areas Container -->
+    <div id="areas-list"></div>
+
+    <!-- Empty State -->
+    <div id="empty-state" class="empty-state">
+      <div class="empty-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+          <line x1="12" y1="11" x2="12" y2="17"></line>
+          <line x1="9" y1="14" x2="15" y2="14"></line>
+        </svg>
+      </div>
+      <div>
+        <h3 style="font-size: 16px; font-weight: 700; color: #0f172a;">No Areas Added</h3>
+        <p style="font-size: 13px; color: #64748b; margin-top: 4px;">Each area begins on a fresh page in the PDF.</p>
+      </div>
+      <button id="btn-add-area-first" type="button" class="btn btn-primary" style="padding: 10px 18px; font-size: 14px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>Add First Area</span>
+      </button>
+    </div>
+
+    <!-- Bottom Add Button -->
+    <div id="bottom-add-container" style="text-align: center; display: none; padding: 10px 0;">
+      <button id="btn-add-area-bottom" type="button" class="btn btn-secondary" style="padding: 10px 20px; font-size: 13px; background: #ffffff;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>Add Another Area</span>
+      </button>
+    </div>
+
+  </main>
+
+  <!-- ================= ADD / RENAME AREA MODAL ================= -->
+  <div id="modal-area" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title" id="modal-area-title">Add Area</div>
+        <button type="button" class="modal-close" data-dismiss="modal-area">&times;</button>
+      </div>
+      <div class="form-group">
+        <label class="field-tag" for="input-area-name">Area Name</label>
+        <input type="text" id="input-area-name" class="text-input" placeholder="e.g. Air lock room, Roof, Kitchen">
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid #f1f5f9; padding-top: 12px;">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal-area">Cancel</button>
+        <button type="button" id="btn-confirm-save-area" class="btn btn-primary">Save Area</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= SETTINGS & THEMES MODAL ================= -->
+  <div id="modal-settings" class="modal-backdrop">
+    <div class="modal-dialog" style="max-width: 520px;">
+      <div class="modal-header">
+        <div class="modal-title">Settings & Layout</div>
+        <button type="button" class="modal-close" data-dismiss="modal-settings">&times;</button>
+      </div>
+
+      <!-- Settings Modal Tabs -->
+      <div class="modal-tabs" style="display: flex; gap: 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 4px;">
+        <button type="button" class="btn btn-primary tab-btn" id="tab-btn-general" style="flex: 1; padding: 6px 10px; font-size: 12px;">General & Layout</button>
+        <button type="button" class="btn btn-secondary tab-btn" id="tab-btn-themes" style="flex: 1; padding: 6px 10px; font-size: 12px;">Themes</button>
+      </div>
+
+      <!-- TAB 1: General & Layout Content -->
+      <div id="tab-content-general" style="display: flex; flex-direction: column; gap: 14px;">
+        <div class="form-group">
+          <label class="field-tag" for="setting-header-title">Report Title</label>
+          <input type="text" id="setting-header-title" class="text-input" value="Site Inspection & Photo Report">
+        </div>
+
+        <div class="form-group" style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label class="field-tag" for="setting-report-by" style="margin: 0;">Report by:</label>
+            <label class="form-check" style="font-size: 11px;">
+              <input type="checkbox" id="setting-show-report-by" checked>
+              <span>Show in Report</span>
+            </label>
+          </div>
+          <input type="text" id="setting-report-by" class="text-input" placeholder="e.g. John Doe / Surveyor">
+        </div>
+
+        <div class="form-group">
+          <label class="field-tag" for="setting-date">Date</label>
+          <input type="date" id="setting-date" class="text-input">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="field-tag" for="setting-paper-size">Paper Size</label>
+            <select id="setting-paper-size" class="text-input">
+              <option value="a4">A4 (210 × 297 mm)</option>
+              <option value="a3">A3 (297 × 420 mm)</option>
+              <option value="letter">Letter (8.5 × 11 in)</option>
+              <option value="legal">Legal (8.5 × 14 in)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="field-tag" for="setting-orientation">Orientation</label>
+            <select id="setting-orientation" class="text-input">
+              <option value="portrait">Portrait</option>
+              <option value="landscape">Landscape</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="field-tag" for="setting-rows">Rows per page</label>
+            <select id="setting-rows" class="text-input">
+              <option value="1">1 Row</option>
+              <option value="2" selected>2 Rows</option>
+              <option value="3">3 Rows</option>
+              <option value="4">4 Rows</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="field-tag" for="setting-cols">Columns per page</label>
+            <select id="setting-cols" class="text-input">
+              <option value="1">1 Column</option>
+              <option value="2" selected>2 Columns</option>
+              <option value="3">3 Columns</option>
+              <option value="4">4 Columns</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; background: #f8fafc;">
+          <label class="form-check">
+            <input type="checkbox" id="setting-enable-remarks" checked>
+            <span>Include Remarks Column/Box</span>
+          </label>
+          <label class="form-check">
+            <input type="checkbox" id="setting-show-image-number" checked>
+            <span>Show Image Number (#1, #2) in Remarks</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- TAB 2: Themes Content -->
+      <div id="tab-content-themes" style="display: none; flex-direction: column; gap: 12px;">
+        <p style="font-size: 12px; color: #64748b;">Select a color theme for your report and exported PDF styling:</p>
+        <div id="themes-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid #f1f5f9; padding-top: 12px;">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal-settings">Cancel</button>
+        <button type="button" id="btn-apply-settings" class="btn btn-primary">Apply</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= CONFIRMATION MODAL ================= -->
+  <div id="modal-confirm" class="modal-backdrop">
+    <div class="modal-dialog" style="max-width: 380px; text-align: center;">
+      <div style="width: 44px; height: 44px; border-radius: 50%; background: #fee2e2; color: #dc2626; display: flex; align-items: center; justify-content: center; margin: 0 auto; font-size: 20px; font-weight: bold;">
+        !
+      </div>
+      <div>
+        <h3 id="confirm-title" style="font-size: 16px; font-weight: 800; color: #0f172a;">Confirm</h3>
+        <p id="confirm-desc" style="font-size: 12px; color: #64748b; margin-top: 4px;">Are you sure?</p>
+      </div>
+      <div style="display: flex; justify-content: center; gap: 8px; margin-top: 8px;">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal-confirm">Cancel</button>
+        <button type="button" id="btn-confirm-ok" class="btn btn-danger">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= LIGHTBOX MODAL ================= -->
+  <div id="modal-lightbox" class="modal-backdrop">
+    <div class="lightbox-wrap">
+      <button type="button" class="lightbox-close" data-dismiss="modal-lightbox">&times;</button>
+      <img id="lightbox-img" class="lightbox-img" src="" alt="Full inspection view">
+      <div id="lightbox-caption" class="lightbox-caption"></div>
+    </div>
+  </div>
+
+  <!-- ================= PROGRESS OVERLAY ================= -->
+  <div id="pdf-progress-overlay">
+    <div class="spinner"></div>
+    <div id="pdf-progress-text" style="font-size: 14px; font-weight: 600;">Generating PDF...</div>
+  </div>
+
+  <!-- ================= SCRIPT ================= -->
+  <script>
+    (function() {
+      'use strict';
+
+      // Millimeter dimensions for supported paper types
+      const PAPER_MM = {
+        a4:     { w: 210,   h: 297 },
+        a3:     { w: 297,   h: 420 },
+        letter: { w: 215.9, h: 279.4 },
+        legal:  { w: 215.9, h: 355.6 }
+      };
+
+      function getDefaultState() {
+        return {
+          settings: {
+            title: 'Site Inspection & Photo Report',
+            pdfName: 'Site_Inspection_Report',
+            reportBy: '',
+            showReportBy: true,
+            date: new Date().toISOString().split('T')[0],
+            paperSize: 'a4',
+            orientation: 'portrait',
+            rows: 2,
+            cols: 2,
+            enableRemarks: true,
+            showImageNumber: true,
+            viewDensity: 4,
+            theme: 'corporate_navy'
+          },
+          areas: [] // Clean startup with 0 default areas
+        };
+      }
+
+      // Available Report & PDF Themes with specific RGB color palettes
+      const THEMES = {
+        corporate_navy: {
+          id: 'corporate_navy',
+          name: 'Corporate Navy',
+          primary: '#1e3a8a',
+          accent: '#2563eb',
+          subtext: '#0284c7',
+          cellBg: '#f8fafc',
+          border: '#cbd5e1',
+          pdfTitleRgb: [30, 58, 138],
+          pdfAccentRgb: [2, 132, 199],
+          pdfLineRgb: [30, 58, 138]
+        },
+        modern_slate: {
+          id: 'modern_slate',
+          name: 'Modern Slate',
+          primary: '#0f172a',
+          accent: '#475569',
+          subtext: '#64748b',
+          cellBg: '#f8fafc',
+          border: '#cbd5e1',
+          pdfTitleRgb: [15, 23, 42],
+          pdfAccentRgb: [71, 85, 105],
+          pdfLineRgb: [15, 23, 42]
+        },
+        blueprint_pro: {
+          id: 'blueprint_pro',
+          name: 'Blueprint Pro',
+          primary: '#0369a1',
+          accent: '#0284c7',
+          subtext: '#0ea5e9',
+          cellBg: '#f0f9ff',
+          border: '#bae6fd',
+          pdfTitleRgb: [3, 105, 161],
+          pdfAccentRgb: [14, 165, 233],
+          pdfLineRgb: [3, 105, 161]
+        },
+        forest_emerald: {
+          id: 'forest_emerald',
+          name: 'Forest Emerald',
+          primary: '#065f46',
+          accent: '#059669',
+          subtext: '#10b981',
+          cellBg: '#f0fdf4',
+          border: '#bbf7d0',
+          pdfTitleRgb: [6, 95, 70],
+          pdfAccentRgb: [5, 150, 105],
+          pdfLineRgb: [6, 95, 70]
+        },
+        crimson_edge: {
+          id: 'crimson_edge',
+          name: 'Crimson Edge',
+          primary: '#881337',
+          accent: '#be123c',
+          subtext: '#e11d48',
+          cellBg: '#fff1f2',
+          border: '#fecdd3',
+          pdfTitleRgb: [136, 19, 55],
+          pdfAccentRgb: [190, 18, 60],
+          pdfLineRgb: [136, 19, 55]
+        },
+        amber_warmth: {
+          id: 'amber_warmth',
+          name: 'Amber Warmth',
+          primary: '#78350f',
+          accent: '#b45309',
+          subtext: '#d97706',
+          cellBg: '#fffbeb',
+          border: '#fde68a',
+          pdfTitleRgb: [120, 53, 15],
+          pdfAccentRgb: [180, 83, 9],
+          pdfLineRgb: [120, 53, 15]
+        },
+        minimal_mono: {
+          id: 'minimal_mono',
+          name: 'Minimal Mono',
+          primary: '#000000',
+          accent: '#262626',
+          subtext: '#525252',
+          cellBg: '#ffffff',
+          border: '#d4d4d4',
+          pdfTitleRgb: [0, 0, 0],
+          pdfAccentRgb: [64, 64, 64],
+          pdfLineRgb: [0, 0, 0]
+        }
+      };
+
+      let activeThemeSelection = 'corporate_navy';
+      let appState = getDefaultState();
+      let activeEditingAreaId = null;
+      let confirmCallback = null;
+
+      // -----------------------------------------------------------------
+      // INDEXEDDB STORAGE (Phone Memory Persistence)
+      // -----------------------------------------------------------------
+      const DB_NAME = 'InspectionReportDB_PurePDF';
+      const STORE_NAME = 'app_state';
+
+      function getDB() {
+        return new Promise((resolve) => {
+          if (!window.indexedDB) return resolve(null);
+          const req = indexedDB.open(DB_NAME, 1);
+          req.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+              db.createObjectStore(STORE_NAME);
+            }
+          };
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => resolve(null);
+        });
+      }
+
+      async function saveState() {
+        const dot = document.getElementById('save-dot');
+        const text = document.getElementById('save-status-text');
+        if (dot) dot.style.background = '#eab308';
+        if (text) text.textContent = 'Saving...';
+
+        try {
+          const db = await getDB();
+          if (db) {
+            await new Promise((resolve, reject) => {
+              const tx = db.transaction(STORE_NAME, 'readwrite');
+              const store = tx.objectStore(STORE_NAME);
+              const r = store.put(appState, 'current_report');
+              r.onsuccess = () => resolve(true);
+              r.onerror = () => reject(r.error);
+            });
+          } else {
+            localStorage.setItem('survey_report_fallback', JSON.stringify(appState));
+          }
+        } catch (err) {
+          console.warn('Storage save warning:', err);
+        }
+
+        setTimeout(() => {
+          if (dot) dot.style.background = '#10b981';
+          if (text) text.textContent = 'Saved to Phone Memory';
+        }, 150);
+      }
+
+      async function loadState() {
+        try {
+          const db = await getDB();
+          if (db) {
+            const state = await new Promise((resolve) => {
+              const tx = db.transaction(STORE_NAME, 'readonly');
+              const store = tx.objectStore(STORE_NAME);
+              const r = store.get('current_report');
+              r.onsuccess = () => resolve(r.result);
+              r.onerror = () => resolve(null);
+            });
+            if (state) return state;
+          }
+          const fallback = localStorage.getItem('survey_report_fallback');
+          if (fallback) return JSON.parse(fallback);
+        } catch (err) {
+          console.warn('Storage load warning:', err);
+        }
+        return null;
+      }
+
+      async function clearStorage() {
+        try {
+          const db = await getDB();
+          if (db) {
+            await new Promise((resolve) => {
+              const tx = db.transaction(STORE_NAME, 'readwrite');
+              const store = tx.objectStore(STORE_NAME);
+              const r = store.clear();
+              r.onsuccess = () => resolve(true);
+              r.onerror = () => resolve(false);
+            });
+          }
+          localStorage.removeItem('survey_report_fallback');
+        } catch (err) {
+          console.warn('Storage clear warning:', err);
+        }
+      }
+
+      // -----------------------------------------------------------------
+      // MODAL CONTROLS
+      // -----------------------------------------------------------------
+      function openModal(id) {
+        const m = document.getElementById(id);
+        if (m) m.classList.add('open');
+      }
+
+      function closeModal(id) {
+        const m = document.getElementById(id);
+        if (m) m.classList.remove('open');
+      }
+
+      document.querySelectorAll('[data-dismiss]').forEach(b => {
+        b.addEventListener('click', () => closeModal(b.getAttribute('data-dismiss')));
+      });
+
+      function promptConfirm(title, desc, action) {
+        document.getElementById('confirm-title').textContent = title;
+        document.getElementById('confirm-desc').textContent = desc;
+        confirmCallback = action;
+        openModal('modal-confirm');
+      }
+
+      document.getElementById('btn-confirm-ok').addEventListener('click', () => {
+        if (typeof confirmCallback === 'function') confirmCallback();
+        closeModal('modal-confirm');
+        confirmCallback = null;
+      });
+
+      // -----------------------------------------------------------------
+      // IMAGE UPLOAD HANDLER
+      // -----------------------------------------------------------------
+      function handleImageUpload(e, areaId) {
+        const files = Array.from(e.target.files || []);
+        if (!files.length) return;
+
+        const targetArea = appState.areas.find(a => a.id === areaId);
+        if (!targetArea) return;
+
+        let loadedCount = 0;
+        files.forEach(file => {
+          const reader = new FileReader();
+          reader.onload = function(evt) {
+            const dataUrl = evt.target.result;
+            const img = new Image();
+            img.onload = function() {
+              const aspectRatio = (img.naturalWidth || 1) / (img.naturalHeight || 1);
+              targetArea.photos.push({
+                dataUrl: dataUrl,
+                aspectRatio: aspectRatio,
+                remarks: ''
+              });
+
+              loadedCount++;
+              if (loadedCount === files.length) {
+                renderApp();
+                saveState();
+              }
+            };
+            img.src = dataUrl;
+          };
+          reader.readAsDataURL(file);
+        });
+        e.target.value = '';
+      }
+
+      // -----------------------------------------------------------------
+      // WORKSPACE RENDERING
+      // -----------------------------------------------------------------
+      function updateSummaryBar() {
+        const s = appState.settings;
+        document.getElementById('input-pdf-filename').value = s.pdfName || 'Site_Inspection_Report';
+        document.getElementById('summary-title').textContent = s.title || 'Site Inspection & Photo Report';
+        document.getElementById('summary-paper').textContent = `${(s.paperSize || 'A4').toUpperCase()} ${(s.orientation || 'portrait')}`;
+        const total = s.rows * s.cols;
+        const currentTheme = THEMES[s.theme] || THEMES.corporate_navy;
+        document.getElementById('summary-grid').textContent = `${s.rows} × ${s.cols} Grid (${total} pics/page) • ${currentTheme.name}`;
+
+        // Apply theme color styling to workspace header icon and accents
+        const brandIcon = document.querySelector('.brand-icon');
+        if (brandIcon) {
+          brandIcon.style.background = currentTheme.primary;
+        }
+
+        // Density buttons active state
+        document.querySelectorAll('.btn-density').forEach(btn => {
+          btn.classList.toggle('active', parseInt(btn.getAttribute('data-density'), 10) === (s.viewDensity || 4));
+        });
+      }
+
+      function renderApp() {
+        updateSummaryBar();
+        const list = document.getElementById('areas-list');
+        const emptyState = document.getElementById('empty-state');
+        const bottomAdd = document.getElementById('bottom-add-container');
+        list.innerHTML = '';
+
+        if (!appState.areas || appState.areas.length === 0) {
+          emptyState.style.display = 'flex';
+          bottomAdd.style.display = 'none';
+          return;
+        }
+
+        emptyState.style.display = 'none';
+        bottomAdd.style.display = 'block';
+
+        const density = appState.settings.viewDensity || 4;
+
+        appState.areas.forEach(area => {
+          const card = document.createElement('div');
+          card.className = `area-card ${area.collapsed ? 'collapsed' : ''}`;
+
+          // Header
+          const header = document.createElement('div');
+          header.className = 'area-header';
+          header.innerHTML = `
+            <div class="area-header-left">
+              <span class="accordion-indicator">▼</span>
+              <span class="area-title-text">${escapeHtml(area.name)}</span>
+              <span class="photo-count-badge">${area.photos.length} photo${area.photos.length === 1 ? '' : 's'}</span>
+            </div>
+            <div class="area-actions" onclick="event.stopPropagation()">
+              <button type="button" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" data-rename-area="${area.id}">Rename</button>
+              <label class="btn btn-primary" style="padding: 4px 10px; font-size: 11px; cursor: pointer;">
+                <span>+ Photos</span>
+                <input type="file" accept="image/*" multiple style="display:none;" data-upload-area="${area.id}">
+              </label>
+              <button type="button" class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" data-delete-area="${area.id}">Delete</button>
+            </div>
+          `;
+
+          header.addEventListener('click', () => {
+            area.collapsed = !area.collapsed;
+            renderApp();
+            saveState();
+          });
+
+          // Body
+          const body = document.createElement('div');
+          body.className = 'area-body';
+
+          if (area.photos.length === 0) {
+            body.innerHTML = `
+              <div style="text-align: center; padding: 22px 10px; border: 1.5px dashed #cbd5e1; border-radius: 12px; background: #f8fafc;">
+                <p style="font-size: 13px; font-weight: 600; color: #475569;">No photos added to this area yet</p>
+                <p style="font-size: 11px; color: #94a3b8; margin-top: 2px;">Tap "+ Photos" above to add inspection photos</p>
+              </div>
+            `;
+          } else {
+            const grid = document.createElement('div');
+            grid.className = `workspace-grid grid-view-${density}`;
+
+            area.photos.forEach((photo, pIdx) => {
+              const item = document.createElement('div');
+              item.className = 'photo-item';
+
+              const top = document.createElement('div');
+              top.className = 'photo-item-top';
+              top.innerHTML = `
+                <span class="photo-num-pill">#${pIdx + 1}</span>
+                <button type="button" class="photo-del-btn" title="Remove Photo" data-del-photo="${area.id}:${pIdx}">&times;</button>
+              `;
+              item.appendChild(top);
+
+              // Image Thumbnail Container (Strict aspect ratio preservation)
+              const previewWrap = document.createElement('div');
+              previewWrap.className = 'photo-preview-wrap';
+              previewWrap.title = 'Tap to view full photo';
+              previewWrap.innerHTML = `<img src="${photo.dataUrl}" alt="Photo #${pIdx + 1}">`;
+              previewWrap.addEventListener('click', () => {
+                document.getElementById('lightbox-img').src = photo.dataUrl;
+                document.getElementById('lightbox-caption').textContent = `${area.name} — Photo #${pIdx + 1}`;
+                openModal('modal-lightbox');
+              });
+              item.appendChild(previewWrap);
+
+              // Remarks
+              if (appState.settings.enableRemarks) {
+                const remarks = document.createElement('textarea');
+                remarks.className = 'remarks-input';
+                remarks.placeholder = 'Add remarks (or leave blank)...';
+                remarks.value = photo.remarks || '';
+                remarks.addEventListener('input', (e) => {
+                  photo.remarks = e.target.value;
+                  saveState();
+                });
+                item.appendChild(remarks);
+              }
+
+              grid.appendChild(item);
+            });
+
+            body.appendChild(grid);
+          }
+
+          card.appendChild(header);
+          card.appendChild(body);
+          list.appendChild(card);
+        });
+
+        // Event Listeners for Area buttons
+        list.querySelectorAll('[data-rename-area]').forEach(b => {
+          b.addEventListener('click', () => {
+            const aId = b.getAttribute('data-rename-area');
+            const target = appState.areas.find(a => a.id === aId);
+            if (!target) return;
+            activeEditingAreaId = aId;
+            document.getElementById('modal-area-title').textContent = 'Rename Area';
+            document.getElementById('input-area-name').value = target.name;
+            openModal('modal-area');
+          });
+        });
+
+        list.querySelectorAll('[data-delete-area]').forEach(b => {
+          b.addEventListener('click', () => {
+            const aId = b.getAttribute('data-delete-area');
+            const target = appState.areas.find(a => a.id === aId);
+            if (!target) return;
+            promptConfirm(`Delete "${target.name}"?`, 'All photos inside this area will be deleted.', () => {
+              appState.areas = appState.areas.filter(a => a.id !== aId);
+              renderApp();
+              saveState();
+            });
+          });
+        });
+
+        list.querySelectorAll('[data-upload-area]').forEach(input => {
+          input.addEventListener('change', (e) => handleImageUpload(e, input.getAttribute('data-upload-area')));
+        });
+
+        list.querySelectorAll('[data-del-photo]').forEach(b => {
+          b.addEventListener('click', () => {
+            const [aId, pIdxStr] = b.getAttribute('data-del-photo').split(':');
+            const pIdx = parseInt(pIdxStr, 10);
+            const target = appState.areas.find(a => a.id === aId);
+            if (target && target.photos[pIdx]) {
+              target.photos.splice(pIdx, 1);
+              renderApp();
+              saveState();
+            }
+          });
+        });
+      }
+
+      // -----------------------------------------------------------------
+      // SETTINGS MODAL & THEMES TABS
+      // -----------------------------------------------------------------
+      function setupSettingsTabs() {
+        const btnGeneral = document.getElementById('tab-btn-general');
+        const btnThemes = document.getElementById('tab-btn-themes');
+        const contentGeneral = document.getElementById('tab-content-general');
+        const contentThemes = document.getElementById('tab-content-themes');
+
+        btnGeneral.addEventListener('click', () => {
+          btnGeneral.classList.add('btn-primary');
+          btnGeneral.classList.remove('btn-secondary');
+          btnThemes.classList.add('btn-secondary');
+          btnThemes.classList.remove('btn-primary');
+          contentGeneral.style.display = 'flex';
+          contentThemes.style.display = 'none';
+        });
+
+        btnThemes.addEventListener('click', () => {
+          btnThemes.classList.add('btn-primary');
+          btnThemes.classList.remove('btn-secondary');
+          btnGeneral.classList.add('btn-secondary');
+          btnGeneral.classList.remove('btn-primary');
+          contentGeneral.style.display = 'none';
+          contentThemes.style.display = 'flex';
+        });
+      }
+
+      function renderThemesGrid() {
+        const container = document.getElementById('themes-grid');
+        if (!container) return;
+        container.innerHTML = '';
+
+        Object.values(THEMES).forEach(theme => {
+          const card = document.createElement('div');
+          const isSelected = (theme.id === activeThemeSelection);
+          card.style.cssText = `
+            border: 2px solid ${isSelected ? theme.primary : '#e2e8f0'};
+            border-radius: 10px;
+            padding: 10px;
+            cursor: pointer;
+            background: #ffffff;
+            transition: all 0.15s ease;
+            box-shadow: ${isSelected ? '0 0 0 2px rgba(37,99,235,0.2)' : 'none'};
+          `;
+
+          card.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+              <span style="font-size: 13px; font-weight: 700; color: #0f172a;">${escapeHtml(theme.name)}</span>
+              ${isSelected ? '<span style="font-size: 11px; color: #2563eb; font-weight: bold;">✓ Active</span>' : ''}
+            </div>
+            <div style="display: flex; gap: 4px; height: 16px; border-radius: 4px; overflow: hidden; border: 1px solid #cbd5e1;">
+              <div style="flex: 2; background: ${theme.primary};" title="Primary Color"></div>
+              <div style="flex: 1; background: ${theme.accent};" title="Accent Color"></div>
+              <div style="flex: 1; background: ${theme.subtext};" title="Highlight Color"></div>
+              <div style="flex: 1; background: ${theme.cellBg};" title="Cell Background"></div>
+            </div>
+          `;
+
+          card.addEventListener('click', () => {
+            activeThemeSelection = theme.id;
+            renderThemesGrid();
+          });
+
+          container.appendChild(card);
+        });
+      }
+
+      document.getElementById('btn-open-settings').addEventListener('click', () => {
+        const s = appState.settings;
+        document.getElementById('setting-header-title').value = s.title || '';
+        document.getElementById('setting-report-by').value = s.reportBy || '';
+        document.getElementById('setting-show-report-by').checked = (s.showReportBy !== false);
+        document.getElementById('setting-date').value = s.date || '';
+        document.getElementById('setting-paper-size').value = s.paperSize || 'a4';
+        document.getElementById('setting-orientation').value = s.orientation || 'portrait';
+        document.getElementById('setting-rows').value = s.rows;
+        document.getElementById('setting-cols').value = s.cols;
+        document.getElementById('setting-enable-remarks').checked = s.enableRemarks;
+        document.getElementById('setting-show-image-number').checked = (s.showImageNumber !== false);
+
+        activeThemeSelection = s.theme || 'corporate_navy';
+        renderThemesGrid();
+
+        // Default open to General tab
+        document.getElementById('tab-btn-general').click();
+        openModal('modal-settings');
+      });
+
+      document.getElementById('btn-apply-settings').addEventListener('click', () => {
+        const s = appState.settings;
+        s.title = document.getElementById('setting-header-title').value.trim() || 'Site Inspection & Photo Report';
+        s.reportBy = document.getElementById('setting-report-by').value.trim();
+        s.showReportBy = document.getElementById('setting-show-report-by').checked;
+        s.date = document.getElementById('setting-date').value;
+        s.paperSize = document.getElementById('setting-paper-size').value;
+        s.orientation = document.getElementById('setting-orientation').value;
+        s.rows = parseInt(document.getElementById('setting-rows').value, 10);
+        s.cols = parseInt(document.getElementById('setting-cols').value, 10);
+        s.enableRemarks = document.getElementById('setting-enable-remarks').checked;
+        s.showImageNumber = document.getElementById('setting-show-image-number').checked;
+        s.theme = activeThemeSelection;
+
+        closeModal('modal-settings');
+        renderApp();
+        saveState();
+      });
+
+      // Area Creation Handlers
+      function showAddAreaModal() {
+        activeEditingAreaId = null;
+        document.getElementById('modal-area-title').textContent = 'Add Inspection Area';
+        document.getElementById('input-area-name').value = '';
+        openModal('modal-area');
+        setTimeout(() => document.getElementById('input-area-name').focus(), 100);
+      }
+
+      document.getElementById('btn-add-area-first').addEventListener('click', showAddAreaModal);
+      document.getElementById('btn-add-area-bottom').addEventListener('click', showAddAreaModal);
+
+      document.getElementById('btn-confirm-save-area').addEventListener('click', () => {
+        const name = document.getElementById('input-area-name').value.trim();
+        if (!name) return;
+
+        if (activeEditingAreaId) {
+          const target = appState.areas.find(a => a.id === activeEditingAreaId);
+          if (target) target.name = name;
+        } else {
+          appState.areas.push({
+            id: 'area_' + Date.now(),
+            name: name,
+            collapsed: false,
+            photos: []
+          });
+        }
+
+        closeModal('modal-area');
+        renderApp();
+        saveState();
+      });
+
+      // Density switchers
+      document.querySelectorAll('.btn-density').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const d = parseInt(btn.getAttribute('data-density'), 10);
+          appState.settings.viewDensity = d;
+          renderApp();
+          saveState();
+        });
+      });
+
+      // Toolbar and global handlers
+      document.getElementById('input-pdf-filename').addEventListener('input', (e) => {
+        appState.settings.pdfName = e.target.value.trim();
+        saveState();
+      });
+
+      document.getElementById('btn-collapse-all').addEventListener('click', () => {
+        appState.areas.forEach(a => a.collapsed = true);
+        renderApp();
+        saveState();
+      });
+
+      document.getElementById('btn-expand-all').addEventListener('click', () => {
+        appState.areas.forEach(a => a.collapsed = false);
+        renderApp();
+        saveState();
+      });
+
+      document.getElementById('btn-reset-app').addEventListener('click', () => {
+        promptConfirm('Reset Entire Report?', 'All areas, photos, remarks, and local saved data will be deleted.', async () => {
+          await clearStorage();
+          appState = getDefaultState();
+          renderApp();
+          saveState();
+        });
+      });
+
+      // -----------------------------------------------------------------
+      // IN-BUILT DIRECT VECTOR & IMAGE PDF ENGINE (jsPDF Pure API)
+      // -----------------------------------------------------------------
+      async function exportPDF() {
+        if (!appState.areas || appState.areas.length === 0) {
+          promptConfirm('No Areas', 'Please add at least one inspection area first.', () => {});
+          return;
+        }
+
+        let totalPhotos = 0;
+        appState.areas.forEach(a => totalPhotos += a.photos.length);
+        if (totalPhotos === 0) {
+          promptConfirm('No Photos', 'Please add at least one photo before generating the PDF.', () => {});
+          return;
+        }
+
+        const overlay = document.getElementById('pdf-progress-overlay');
+        const progressText = document.getElementById('pdf-progress-text');
+        overlay.style.display = 'flex';
+        progressText.textContent = 'Preparing PDF Engine...';
+
+        await new Promise(r => setTimeout(r, 60));
+
+        try {
+          const { jsPDF } = window.jspdf;
+          const s = appState.settings;
+          const isLandscape = s.orientation === 'landscape';
+          const paperBase = PAPER_MM[s.paperSize] || PAPER_MM.a4;
+
+          const pageW = isLandscape ? paperBase.h : paperBase.w;
+          const pageH = isLandscape ? paperBase.w : paperBase.h;
+
+          const doc = new jsPDF({
+            orientation: s.orientation,
+            unit: 'mm',
+            format: [pageW, pageH],
+            compress: true
+          });
+
+          const marginX = 8;
+          const marginTop = 8;
+          const marginBottom = 8;
+
+          const contentW = pageW - (marginX * 2);
+          const headerH = 14;
+          const footerH = 6;
+          const gridH = pageH - marginTop - marginBottom - headerH - footerH;
+
+          const rows = s.rows;
+          const cols = s.cols;
+          const picsPerPage = rows * cols;
+
+          const gapX = 3;
+          const gapY = 3;
+          const cellW = (contentW - (gapX * (cols - 1))) / cols;
+          const cellH = (gridH - (gapY * (rows - 1))) / rows;
+
+          const theme = THEMES[s.theme] || THEMES.corporate_navy;
+
+          // Single compact 1-line strip for remarks: only 5.5mm
+          const remarksH = s.enableRemarks ? 5.5 : 0;
+          const photoBoxH = cellH - remarksH;
+
+          let isFirstPage = true;
+          let globalPageNumber = 1;
+
+          // Process each area starting on a fresh page
+          for (let aIdx = 0; aIdx < appState.areas.length; aIdx++) {
+            const area = appState.areas[aIdx];
+            const photos = area.photos;
+            const totalAreaPages = Math.max(1, Math.ceil(photos.length / picsPerPage));
+
+            for (let pageIdx = 0; pageIdx < totalAreaPages; pageIdx++) {
+              if (!isFirstPage) {
+                doc.addPage([pageW, pageH], s.orientation);
+              }
+              isFirstPage = false;
+
+              progressText.textContent = `Rendering ${area.name} (Page ${pageIdx + 1} of ${totalAreaPages})...`;
+
+              // 1. COMPACT THEMED HEADER
+              const headerY = marginTop;
+              doc.setFont('helvetica', 'bold');
+              doc.setFontSize(12);
+              doc.setTextColor(theme.pdfTitleRgb[0], theme.pdfTitleRgb[1], theme.pdfTitleRgb[2]);
+              doc.text(s.title || 'Site Inspection & Photo Report', marginX, headerY + 4);
+
+              // Area Subtitle with Theme Accent
+              doc.setFont('helvetica', 'bold');
+              doc.setFontSize(9.5);
+              doc.setTextColor(theme.pdfAccentRgb[0], theme.pdfAccentRgb[1], theme.pdfAccentRgb[2]);
+              let areaText = `Area: ${area.name}`;
+              if (totalAreaPages > 1) {
+                areaText += ` (Page ${pageIdx + 1} of ${totalAreaPages})`;
+              }
+              doc.text(areaText, marginX, headerY + 9.5);
+
+              // Header Right: Date & Report by
+              doc.setFont('helvetica', 'normal');
+              doc.setFontSize(8);
+              doc.setTextColor(71, 85, 105);
+
+              let rightY = headerY + 4;
+              const showReportBy = s.showReportBy && s.reportBy && s.reportBy.trim().length > 0;
+              if (showReportBy) {
+                doc.text(`Report by: `, pageW - marginX - 32, rightY);
+                doc.setFont('helvetica', 'bold');
+                doc.text(s.reportBy.trim(), pageW - marginX, rightY, { align: 'right' });
+                rightY += 4.5;
+              }
+
+              doc.setFont('helvetica', 'normal');
+              doc.text(`Date: `, pageW - marginX - 32, rightY);
+              doc.setFont('helvetica', 'bold');
+              doc.text(s.date || '', pageW - marginX, rightY, { align: 'right' });
+
+              // Divider rule below header with Theme Color
+              doc.setDrawColor(theme.pdfLineRgb[0], theme.pdfLineRgb[1], theme.pdfLineRgb[2]);
+              doc.setLineWidth(0.6);
+              doc.line(marginX, headerY + 12, pageW - marginX, headerY + 12);
+
+              // 2. PHOTO GRID - Render existing photos only (no empty boxes)
+              const gridStartY = marginTop + headerH;
+              const pagePhotos = photos.slice(pageIdx * picsPerPage, (pageIdx + 1) * picsPerPage);
+
+              for (let slot = 0; slot < pagePhotos.length; slot++) {
+                const photo = pagePhotos[slot];
+                if (!photo) continue;
+
+                const r = Math.floor(slot / cols);
+                const c = slot % cols;
+                const cellX = marginX + c * (cellW + gapX);
+                const cellY = gridStartY + r * (cellH + gapY);
+
+                const photoNum = (pageIdx * picsPerPage) + slot + 1;
+
+                // Cell Outer Border
+                doc.setDrawColor(203, 213, 225);
+                doc.setLineWidth(0.25);
+                doc.setFillColor(248, 250, 252);
+                doc.roundedRect(cellX, cellY, cellW, cellH, 1, 1, 'FD');
+
+                // Maximize photo space: 1mm border padding
+                const pad = 1;
+                const maxBoxW = cellW - (pad * 2);
+                const maxBoxH = photoBoxH - (pad * 2);
+
+                let imgW = maxBoxW;
+                let imgH = maxBoxH;
+                const ratio = photo.aspectRatio || 1;
+
+                if (ratio > (maxBoxW / maxBoxH)) {
+                  imgW = maxBoxW;
+                  imgH = maxBoxW / ratio;
+                } else {
+                  imgH = maxBoxH;
+                  imgW = maxBoxH * ratio;
+                }
+
+                // Center image in the photo box
+                const imgX = cellX + pad + ((maxBoxW - imgW) / 2);
+                const imgY = cellY + pad + ((maxBoxH - imgH) / 2);
+
+                doc.addImage(photo.dataUrl, 'JPEG', imgX, imgY, imgW, imgH, undefined, 'FAST');
+
+                // 3. MINIMAL SINGLE-LINE REMARK STRIP
+                if (s.enableRemarks) {
+                  const remBoxX = cellX;
+                  const remBoxY = cellY + photoBoxH;
+                  const remBoxW = cellW;
+                  const remBoxH = remarksH;
+
+                  // Clean separator line
+                  doc.setDrawColor(226, 232, 240);
+                  doc.setLineWidth(0.2);
+                  doc.line(remBoxX, remBoxY, remBoxX + remBoxW, remBoxY);
+
+                  let textStartX = remBoxX + 2;
+
+                  // Left-aligned numbering (e.g., #1)
+                  if (s.showImageNumber !== false) {
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(8);
+                    doc.setTextColor(theme.pdfTitleRgb[0], theme.pdfTitleRgb[1], theme.pdfTitleRgb[2]);
+                    const numLabel = `#${photoNum}`;
+                    doc.text(numLabel, textStartX, remBoxY + 3.8);
+                    textStartX += (doc.getTextWidth(numLabel) + 2);
+                  }
+
+                  // Optional short 1-line remark (clean text only, blank if none)
+                  if (photo.remarks && photo.remarks.trim().length > 0) {
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(7.5);
+                    doc.setTextColor(30, 41, 59);
+
+                    const availW = remBoxW - (textStartX - remBoxX) - 2;
+                    const splitLines = doc.splitTextToSize(photo.remarks.trim(), availW);
+                    doc.text(splitLines[0], textStartX, remBoxY + 3.8);
+                  }
+                }
+              }
+
+              // 4. FOOTER
+              const footerY = pageH - marginBottom + 2;
+              doc.setDrawColor(226, 232, 240);
+              doc.setLineWidth(0.2);
+              doc.line(marginX, footerY - 2, pageW - marginX, footerY - 2);
+
+              doc.setFont('helvetica', 'normal');
+              doc.setFontSize(7);
+              doc.setTextColor(148, 163, 184);
+              doc.text(s.title || 'Site Inspection & Photo Report', marginX, footerY + 1.5);
+              doc.text(`Page ${globalPageNumber}`, pageW - marginX, footerY + 1.5, { align: 'right' });
+
+              globalPageNumber++;
+            }
+          }
+
+          // Direct Download
+          const rawName = (s.pdfName || 'Site_Inspection_Report').trim().replace(/[^a-zA-Z0-9_\-]/g, '_');
+          const finalFilename = `${rawName || 'Site_Inspection_Report'}.pdf`;
+
+          progressText.textContent = 'Saving PDF File...';
+          doc.save(finalFilename);
+
+        } catch (err) {
+          console.error('PDF Generation Error:', err);
+          promptConfirm('PDF Error', 'An error occurred while generating the PDF: ' + err.message, () => {});
+        } finally {
+          overlay.style.display = 'none';
+        }
+      }
+
+      document.getElementById('btn-export-pdf').addEventListener('click', exportPDF);
+
+      // -----------------------------------------------------------------
+      // UTILITIES & BOOTSTRAP
+      // -----------------------------------------------------------------
+      function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+
+      async function init() {
+        setupSettingsTabs();
+        const saved = await loadState();
+        if (saved && Array.isArray(saved.areas)) {
+          appState = saved;
+        }
+        renderApp();
+      }
+
+      window.addEventListener('DOMContentLoaded', init);
+
+    })();
+  </script>
+</body>
+</html>
